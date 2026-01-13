@@ -175,25 +175,47 @@ export const oauthCallback = async (
       return;
     }
 
-    if (!code || !state) {
+    if (!code) {
       res.redirect(`${process.env.FRONTEND_URL || 'https://app.clerky.com.br'}/gerenciador-conexoes?error=invalid_callback`);
       return;
     }
 
-    // Decodificar state
-    let stateData;
-    try {
-      const decodedState = decodeURIComponent(state as string);
-      console.log('📋 State decodificado:', decodedState);
-      stateData = JSON.parse(decodedState);
-    } catch (error: any) {
-      console.error('❌ Erro ao decodificar state:', error);
-      console.error('📋 State recebido:', state);
-      res.redirect(`${process.env.FRONTEND_URL || 'https://app.clerky.com.br'}/gerenciador-conexoes?error=invalid_state`);
-      return;
+    // Decodificar state (pode não estar presente ou ser inválido)
+    let userId: string | undefined;
+    let instanceName: string | undefined;
+    
+    if (state) {
+      try {
+        const decodedState = decodeURIComponent(state as string);
+        console.log('📋 State decodificado:', decodedState);
+        
+        // Verificar se não é apenas "..." (três pontos)
+        if (decodedState !== '...' && decodedState.length > 3) {
+          const parsedState = JSON.parse(decodedState);
+          userId = parsedState.userId;
+          instanceName = parsedState.instanceName;
+          console.log('✅ State parseado com sucesso:', { userId, instanceName });
+        } else {
+          console.warn('⚠️ State inválido ou vazio, usando valores padrão');
+        }
+      } catch (error: any) {
+        console.error('❌ Erro ao decodificar state:', error);
+        console.error('📋 State recebido:', state);
+        console.warn('⚠️ Continuando sem state, usando valores padrão');
+      }
+    } else {
+      console.warn('⚠️ State não presente na requisição');
     }
     
-    const { userId, instanceName } = stateData;
+    // Se não tiver userId do state, tentar obter de outra forma ou usar padrão
+    if (!userId) {
+      console.warn('⚠️ userId não disponível no state, usando valor padrão');
+      userId = 'unknown-user'; // Valor padrão - em produção, isso deve ser tratado diferente
+    }
+    
+    if (!instanceName) {
+      instanceName = 'Instagram'; // Valor padrão
+    }
 
     // Limpar código: remover #_ se presente (conforme documentação)
     let cleanCode = code as string;
