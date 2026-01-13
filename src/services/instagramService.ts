@@ -107,7 +107,12 @@ export async function exchangeCodeForToken(code: string): Promise<{
     console.log('🔄 Trocando código por token de acesso...');
     console.log('📋 Código recebido:', code.substring(0, 20) + '...');
     console.log('🔗 Token URL:', INSTAGRAM_CONFIG.TOKEN_URL);
-    console.log('🔑 Client ID:', INSTAGRAM_CONFIG.CLIENT_ID ? 'Configurado' : '❌ Não configurado');
+    console.log('🔑 Client ID:', INSTAGRAM_CONFIG.CLIENT_ID || '❌ NÃO CONFIGURADO');
+    console.log('🔑 Client Secret:', INSTAGRAM_CONFIG.CLIENT_SECRET ? '***configurado***' : '❌ NÃO CONFIGURADO');
+    
+    if (!INSTAGRAM_CONFIG.CLIENT_ID || !INSTAGRAM_CONFIG.CLIENT_SECRET) {
+      throw new Error('CLIENT_ID ou CLIENT_SECRET não configurados no .env');
+    }
 
     // A API do Instagram requer application/x-www-form-urlencoded no body
     // IMPORTANTE: redirect_uri deve ser EXATAMENTE igual ao usado na URL de autorização
@@ -125,9 +130,14 @@ export async function exchangeCodeForToken(code: string): Promise<{
 
     console.log('📋 Parâmetros enviados:');
     console.log('   - client_id:', INSTAGRAM_CONFIG.CLIENT_ID);
+    console.log('   - client_secret:', INSTAGRAM_CONFIG.CLIENT_SECRET ? '***configurado***' : '❌ NÃO CONFIGURADO');
     console.log('   - grant_type: authorization_code');
     console.log('   - redirect_uri:', redirectUri);
     console.log('   - code:', code.substring(0, 20) + '...');
+    console.log('\n⚠️ VERIFICAÇÃO:');
+    console.log('   - O CLIENT_ID e CLIENT_SECRET devem corresponder ao app usado na URL de autorização');
+    console.log('   - O redirect_uri deve ser EXATAMENTE igual ao usado na URL de autorização');
+    console.log('   - Verifique o .env nas linhas 6-7 (CLIENT_ID e CLIENT_SECRET)\n');
 
     const response = await axios.post(INSTAGRAM_CONFIG.TOKEN_URL, params.toString(), {
       headers: {
