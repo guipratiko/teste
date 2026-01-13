@@ -576,6 +576,10 @@ export const getSubscribedApps = async (
       return next(createValidationError('Instância não encontrada'));
     }
 
+    console.log('🔍 Consultando webhooks para instância:', instance._id);
+    console.log('👤 Account ID:', instance.instagramAccountId);
+    console.log('🔑 Token (primeiros 20 chars):', instance.accessToken.substring(0, 20) + '...');
+
     const info = await getSubscribedAppsInfo(instance.accessToken, instance.instagramAccountId);
     
     res.json({
@@ -584,8 +588,24 @@ export const getSubscribedApps = async (
       instanceId: instance._id,
       accountId: instance.instagramAccountId,
     });
-  } catch (error: unknown) {
-    return next(handleControllerError(error, 'Erro ao consultar webhooks inscritos'));
+  } catch (error: any) {
+    console.error('❌ Erro detalhado ao consultar webhooks:', error);
+    
+    // Retornar erro mais detalhado
+    if (error.response) {
+      const status = error.response.status;
+      const errorData = error.response.data;
+      
+      res.status(status).json({
+        success: false,
+        status: status,
+        error: errorData,
+        message: `Erro da API do Instagram: ${errorData?.error?.message || error.message}`,
+        instanceId: req.params.id,
+      });
+    } else {
+      return next(handleControllerError(error, 'Erro ao consultar webhooks inscritos'));
+    }
   }
 };
 
