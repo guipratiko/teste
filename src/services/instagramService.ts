@@ -49,6 +49,7 @@ export async function getInstagramUserInfo(
 /**
  * Troca código de autorização por token de acesso de curta duração
  * Conforme documentação: https://developers.facebook.com/docs/instagram-platform/reference/access_token
+ * A API do Instagram requer application/x-www-form-urlencoded no body
  */
 export async function exchangeCodeForToken(code: string): Promise<{
   access_token: string;
@@ -60,14 +61,19 @@ export async function exchangeCodeForToken(code: string): Promise<{
     console.log('🔄 Trocando código por token de acesso...');
     console.log('📋 Código recebido:', code.substring(0, 20) + '...');
     console.log('🔗 Token URL:', INSTAGRAM_CONFIG.TOKEN_URL);
+    console.log('🔑 Client ID:', INSTAGRAM_CONFIG.CLIENT_ID ? 'Configurado' : '❌ Não configurado');
 
-    const response = await axios.post(INSTAGRAM_CONFIG.TOKEN_URL, null, {
-      params: {
-        client_id: INSTAGRAM_CONFIG.CLIENT_ID,
-        client_secret: INSTAGRAM_CONFIG.CLIENT_SECRET,
-        grant_type: 'authorization_code',
-        redirect_uri: INSTAGRAM_CONFIG.REDIRECT_URI,
-        code,
+    // A API do Instagram requer application/x-www-form-urlencoded no body
+    const params = new URLSearchParams();
+    params.append('client_id', INSTAGRAM_CONFIG.CLIENT_ID);
+    params.append('client_secret', INSTAGRAM_CONFIG.CLIENT_SECRET);
+    params.append('grant_type', 'authorization_code');
+    params.append('redirect_uri', INSTAGRAM_CONFIG.REDIRECT_URI);
+    params.append('code', code);
+
+    const response = await axios.post(INSTAGRAM_CONFIG.TOKEN_URL, params.toString(), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
     });
 
@@ -82,6 +88,10 @@ export async function exchangeCodeForToken(code: string): Promise<{
     console.error('📋 Status:', error.response?.status);
     console.error('📋 Data:', JSON.stringify(error.response?.data, null, 2));
     console.error('📋 Message:', error.message);
+    
+    if (error.response?.data?.error_message) {
+      throw new Error(`Erro ao obter token: ${error.response.data.error_message}`);
+    }
     
     if (error.response?.data?.error) {
       throw new Error(`Erro ao obter token: ${error.response.data.error.message || error.response.data.error}`);
