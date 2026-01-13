@@ -194,27 +194,14 @@ export const oauthCallback = async (
     const shortLivedTokenData = await exchangeCodeForToken(cleanCode);
 
     // Trocar token de curta duração por token de longa duração
-    let longLivedTokenData;
-    try {
-      longLivedTokenData = await exchangeShortLivedForLongLivedToken(shortLivedTokenData.access_token);
-      console.log('✅ Token de longa duração obtido');
-    } catch (error: any) {
-      console.warn('⚠️ Não foi possível obter token de longa duração, usando token de curta duração');
-      console.warn('📋 Erro:', error.message);
-      // Usar token de curta duração se falhar
-      longLivedTokenData = {
-        access_token: shortLivedTokenData.access_token,
-        token_type: shortLivedTokenData.token_type,
-        expires_in: shortLivedTokenData.expires_in || 3600, // Default 1 hora
-      };
-    }
+    const longLivedTokenData = await exchangeShortLivedForLongLivedToken(shortLivedTokenData.access_token);
 
     // Calcular data de expiração
     const expiresIn = longLivedTokenData.expires_in || 3600;
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
-    // Obter informações do usuário
-    const userInfo = await getInstagramUserInfo(longLivedTokenData.access_token);
+    // Obter informações do usuário (usar user_id da resposta se disponível)
+    const userInfo = await getInstagramUserInfo(longLivedTokenData.access_token, shortLivedTokenData.user_id);
 
     // Criar ou atualizar instância
     let instance = await findInstanceByAccountId(userInfo.id);
