@@ -24,24 +24,55 @@ export interface ReplyCommentParams {
 
 /**
  * Obtém informações do usuário do Instagram
+ * GET https://graph.instagram.com/me?fields=id,username,account_type&access_token=...
+ * Nota: Para Basic Display API, pode ser necessário usar o endpoint sem versão
  */
 export async function getInstagramUserInfo(
   accessToken: string
 ): Promise<InstagramUserInfo> {
   try {
-    const response = await axios.get(
-      `${INSTAGRAM_CONFIG.API_URL}/${INSTAGRAM_CONFIG.API_VERSION}/me`,
-      {
+    console.log('👤 Obtendo informações do usuário...');
+    
+    // Tentar primeiro sem versão (Basic Display API)
+    let url = `${INSTAGRAM_CONFIG.API_URL}/me`;
+    console.log('🔗 URL:', url);
+
+    try {
+      const response = await axios.get(url, {
         params: {
           fields: 'id,username,account_type',
           access_token: accessToken,
         },
-      }
-    );
+      });
 
-    return response.data;
+      console.log('✅ Informações do usuário obtidas:', JSON.stringify(response.data, null, 2));
+      return response.data;
+    } catch (error: any) {
+      // Se falhar, tentar com versão
+      console.log('⚠️ Tentando com versão da API...');
+      url = `${INSTAGRAM_CONFIG.API_URL}/${INSTAGRAM_CONFIG.API_VERSION}/me`;
+      console.log('🔗 URL:', url);
+
+      const response = await axios.get(url, {
+        params: {
+          fields: 'id,username,account_type',
+          access_token: accessToken,
+        },
+      });
+
+      console.log('✅ Informações do usuário obtidas:', JSON.stringify(response.data, null, 2));
+      return response.data;
+    }
   } catch (error: any) {
-    console.error('Erro ao obter informações do usuário:', error.response?.data || error.message);
+    console.error('❌ Erro ao obter informações do usuário');
+    console.error('📋 Status:', error.response?.status);
+    console.error('📋 Data:', JSON.stringify(error.response?.data, null, 2));
+    console.error('📋 Message:', error.message);
+    
+    if (error.response?.data?.error) {
+      throw new Error(`Erro ao obter informações do usuário: ${error.response.data.error.message || error.response.data.error}`);
+    }
+    
     throw new Error('Erro ao obter informações do usuário do Instagram');
   }
 }
@@ -78,11 +109,21 @@ export async function exchangeCodeForToken(code: string): Promise<{
     });
 
     console.log('✅ Token de acesso obtido com sucesso');
-    console.log('📋 Token type:', response.data.token_type);
-    console.log('⏰ Expires in:', response.data.expires_in, 'segundos');
-    console.log('👤 User ID:', response.data.user_id);
+    console.log('📋 Resposta completa:', JSON.stringify(response.data, null, 2));
+    
+    // A resposta pode ter diferentes formatos
+    const tokenData = {
+      access_token: response.data.access_token,
+      token_type: response.data.token_type || 'bearer',
+      expires_in: response.data.expires_in || 3600, // Default 1 hora se não especificado
+      user_id: response.data.user_id,
+    };
 
-    return response.data;
+    console.log('📋 Token type:', tokenData.token_type);
+    console.log('⏰ Expires in:', tokenData.expires_in, 'segundos');
+    console.log('👤 User ID:', tokenData.user_id);
+
+    return tokenData;
   } catch (error: any) {
     console.error('❌ Erro ao trocar código por token');
     console.error('📋 Status:', error.response?.status);
@@ -104,6 +145,7 @@ export async function exchangeCodeForToken(code: string): Promise<{
 /**
  * Troca token de curta duração por token de longa duração
  * Conforme documentação: https://developers.facebook.com/docs/instagram-platform/reference/access_token
+ * GET https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=...&access_token=...
  */
 export async function exchangeShortLivedForLongLivedToken(
   shortLivedToken: string
@@ -114,9 +156,11 @@ export async function exchangeShortLivedForLongLivedToken(
 }> {
   try {
     console.log('🔄 Trocando token de curta duração por token de longa duração...');
+    console.log('🔗 URL:', `${INSTAGRAM_CONFIG.API_URL}/access_token`);
 
+    // Usar GET conforme documentação oficial
     const response = await axios.get(
-      `${INSTAGRAM_CONFIG.API_URL}/${INSTAGRAM_CONFIG.API_VERSION}/access_token`,
+      `${INSTAGRAM_CONFIG.API_URL}/access_token`,
       {
         params: {
           grant_type: 'ig_exchange_token',
@@ -127,9 +171,14 @@ export async function exchangeShortLivedForLongLivedToken(
     );
 
     console.log('✅ Token de longa duração obtido com sucesso');
+    console.log('📋 Resposta:', JSON.stringify(response.data, null, 2));
     console.log('⏰ Expires in:', response.data.expires_in, 'segundos');
 
-    return response.data;
+    return {
+      access_token: response.data.access_token,
+      token_type: response.data.token_type || 'bearer',
+      expires_in: response.data.expires_in,
+    };
   } catch (error: any) {
     console.error('❌ Erro ao trocar por token de longa duração');
     console.error('📋 Status:', error.response?.status);
