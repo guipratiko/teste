@@ -309,6 +309,9 @@ export async function replyToComment(
 /**
  * Verifica quais campos estão inscritos em webhooks
  * GET /{api_version}/{ig_user_id}/subscribed_apps
+ * 
+ * NOTA: Este endpoint só funciona para apps configurados como "Instagram API with Business Login"
+ * ou "Instagram API with Facebook Login for Business". Apps "Basic Display" não suportam webhooks.
  */
 export async function getSubscribedFields(
   accessToken: string,
@@ -328,7 +331,16 @@ export async function getSubscribedFields(
     
     return subscribedFields;
   } catch (error: any) {
-    console.warn('⚠️ Erro ao verificar campos inscritos:', error.response?.data || error.message);
+    if (error.response?.data?.error?.code === 100) {
+      console.warn('⚠️ App não suporta inscrição automática em webhooks');
+      console.warn('📋 Possíveis causas:');
+      console.warn('   1. App configurado como "Basic Display" (não suporta webhooks)');
+      console.warn('   2. App precisa ser configurado como "Business Login" ou "Facebook Login for Business"');
+      console.warn('   3. Verifique em: https://developers.facebook.com/apps/' + INSTAGRAM_CONFIG.CLIENT_ID + '/instagram-basic-display/basic-display/');
+      console.warn('ℹ️ Webhooks devem ser configurados manualmente no Facebook Developers');
+    } else {
+      console.warn('⚠️ Erro ao verificar campos inscritos:', error.response?.data || error.message);
+    }
     return [];
   }
 }
@@ -340,6 +352,9 @@ export async function getSubscribedFields(
  * Campos disponíveis:
  * - messages, messaging_postbacks, messaging_seen, messaging_handover, messaging_referral
  * - message_reactions, standby, comments, live_comments, mentions, story_insights
+ * 
+ * NOTA: Este endpoint só funciona para apps configurados como "Instagram API with Business Login"
+ * ou "Instagram API with Facebook Login for Business". Apps "Basic Display" não suportam webhooks.
  */
 export async function subscribeToWebhook(
   accessToken: string,
@@ -354,6 +369,12 @@ export async function subscribeToWebhook(
     // Verificar campos já inscritos
     const existingFields = await getSubscribedFields(accessToken, instagramAccountId);
     
+    // Se não conseguiu verificar, pode ser que o app não suporte
+    // Mas vamos tentar inscrever mesmo assim
+    if (existingFields.length === 0) {
+      console.log('ℹ️ Não foi possível verificar campos existentes, tentando inscrever...');
+    }
+    
     // Campos que queremos receber via webhook
     const desiredFields = [
       'messages',              // Mensagens diretas
@@ -365,14 +386,16 @@ export async function subscribeToWebhook(
     ];
     
     // Verificar se já está tudo inscrito
-    const missingFields = desiredFields.filter(field => !existingFields.includes(field));
+    const missingFields = existingFields.length > 0 
+      ? desiredFields.filter(field => !existingFields.includes(field))
+      : desiredFields;
     
-    if (missingFields.length === 0) {
+    if (missingFields.length === 0 && existingFields.length > 0) {
       console.log('✅ Todos os campos já estão inscritos');
       return true;
     }
     
-    console.log('📋 Campos a inscrever:', missingFields.join(', '));
+    console.log('📋 Campos a inscrever:', desiredFields.join(', '));
     
     // URL da API: POST /{api_version}/{ig_user_id}/subscribed_apps
     const url = `${INSTAGRAM_CONFIG.API_URL}/${INSTAGRAM_CONFIG.API_VERSION}/${instagramAccountId}/subscribed_apps`;
@@ -397,16 +420,28 @@ export async function subscribeToWebhook(
     
     return true;
   } catch (error: any) {
-    console.error('❌ Erro ao inscrever conta em webhooks');
-    console.error('📋 Status:', error.response?.status);
-    console.error('📋 Data:', JSON.stringify(error.response?.data, null, 2));
-    console.error('📋 Mensagem:', error.message);
+    if (error.response?.data?.error?.code === 100) {
+      console.warn('⚠️ App não suporta inscrição automática em webhooks');
+      console.warn('📋 O app parece estar configurado como "Basic Display"');
+      console.warn('📋 Para usar webhooks, o app precisa ser configurado como:');
+      console.warn('   - "Instagram API with Business Login" OU');
+      console.warn('   - "Instagram API with Facebook Login for Business"');
+      console.warn('📋 Configure em: https://developers.facebook.com/apps/' + INSTAGRAM_CONFIG.CLIENT_ID + '/instagram-basic-display/basic-display/');
+      console.warn('ℹ️ Webhooks devem ser configurados manualmente no Facebook Developers');
+      console.warn('ℹ️ Link: https://developers.facebook.com/apps/' + INSTAGRAM_CONFIG.CLIENT_ID + '/webhooks/');
+    } else {
+      console.error('❌ Erro ao inscrever conta em webhooks');
+      console.error('📋 Status:', error.response?.status);
+      console.error('📋 Data:', JSON.stringify(error.response?.data, null, 2));
+      console.error('📋 Mensagem:', error.message);
+      console.warn('ℹ️ Verifique se o webhook está configurado no Facebook Developers');
+      console.warn('ℹ️ Link: https://developers.facebook.com/apps/' + INSTAGRAM_CONFIG.CLIENT_ID + '/webhooks/');
+    }
     
     // Não falhar completamente se a inscrição falhar
     // O webhook pode já estar configurado no Facebook Developers
     console.warn('⚠️ Continuando mesmo com erro na inscrição');
-    console.warn('ℹ️ Verifique se o webhook está configurado no Facebook Developers');
-    console.warn('ℹ️ Link: https://developers.facebook.com/apps/' + INSTAGRAM_CONFIG.CLIENT_ID + '/webhooks/');
+    console.warn('✅ O sistema funcionará se o webhook estiver configurado manualmente');
     
     return false;
   }
