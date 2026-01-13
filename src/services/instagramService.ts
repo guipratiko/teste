@@ -307,9 +307,39 @@ export async function replyToComment(
 }
 
 /**
+ * Verifica quais campos estão inscritos em webhooks
+ * GET /{api_version}/{ig_user_id}/subscribed_apps
+ */
+export async function getSubscribedFields(
+  accessToken: string,
+  instagramAccountId: string
+): Promise<string[]> {
+  try {
+    const url = `${INSTAGRAM_CONFIG.API_URL}/${INSTAGRAM_CONFIG.API_VERSION}/${instagramAccountId}/subscribed_apps`;
+    
+    const response = await axios.get(url, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+    
+    const subscribedFields = response.data?.data?.[0]?.subscribed_fields || [];
+    console.log('📋 Campos já inscritos:', subscribedFields.join(', ') || 'Nenhum');
+    
+    return subscribedFields;
+  } catch (error: any) {
+    console.warn('⚠️ Erro ao verificar campos inscritos:', error.response?.data || error.message);
+    return [];
+  }
+}
+
+/**
  * Inscreve a conta do Instagram em webhooks
- * Necessário para receber eventos de DM e comentários
- * POST /{ig-user-id}/subscribed_apps
+ * POST /{api_version}/{ig_user_id}/subscribed_apps
+ * 
+ * Campos disponíveis:
+ * - messages, messaging_postbacks, messaging_seen, messaging_handover, messaging_referral
+ * - message_reactions, standby, comments, live_comments, mentions, story_insights
  */
 export async function subscribeToWebhook(
   accessToken: string,
@@ -319,27 +349,45 @@ export async function subscribeToWebhook(
     console.log('📡 Inscrevendo conta do Instagram em webhooks...');
     console.log('👤 Account ID:', instagramAccountId);
     console.log('🔗 API URL:', INSTAGRAM_CONFIG.API_URL);
+    console.log('📋 API Version:', INSTAGRAM_CONFIG.API_VERSION);
+    
+    // Verificar campos já inscritos
+    const existingFields = await getSubscribedFields(accessToken, instagramAccountId);
     
     // Campos que queremos receber via webhook
-    const subscribedFields = ['messaging', 'comments'];
+    const desiredFields = [
+      'messages',              // Mensagens diretas
+      'messaging_postbacks',    // Postbacks de mensagens
+      'messaging_seen',        // Mensagens visualizadas
+      'comments',              // Comentários em posts
+      'live_comments',         // Comentários em lives
+      'mentions',              // Menções
+    ];
     
-    // URL da API: POST /{ig-user-id}/subscribed_apps
-    const url = `${INSTAGRAM_CONFIG.API_URL}/${instagramAccountId}/subscribed_apps`;
+    // Verificar se já está tudo inscrito
+    const missingFields = desiredFields.filter(field => !existingFields.includes(field));
+    
+    if (missingFields.length === 0) {
+      console.log('✅ Todos os campos já estão inscritos');
+      return true;
+    }
+    
+    console.log('📋 Campos a inscrever:', missingFields.join(', '));
+    
+    // URL da API: POST /{api_version}/{ig_user_id}/subscribed_apps
+    const url = `${INSTAGRAM_CONFIG.API_URL}/${INSTAGRAM_CONFIG.API_VERSION}/${instagramAccountId}/subscribed_apps`;
     
     console.log('📋 URL de inscrição:', url);
-    console.log('📋 Campos a inscrever:', subscribedFields.join(', '));
     
     const response = await axios.post(
       url,
       {
-        subscribed_fields: subscribedFields.join(','),
+        subscribed_fields: desiredFields,
       },
       {
-        params: {
-          access_token: accessToken,
-        },
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
       }
     );
@@ -358,6 +406,7 @@ export async function subscribeToWebhook(
     // O webhook pode já estar configurado no Facebook Developers
     console.warn('⚠️ Continuando mesmo com erro na inscrição');
     console.warn('ℹ️ Verifique se o webhook está configurado no Facebook Developers');
+    console.warn('ℹ️ Link: https://developers.facebook.com/apps/' + INSTAGRAM_CONFIG.CLIENT_ID + '/webhooks/');
     
     return false;
   }
