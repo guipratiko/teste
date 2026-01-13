@@ -307,35 +307,58 @@ export async function replyToComment(
 }
 
 /**
- * Registra webhook no Instagram para uma instância
+ * Inscreve a conta do Instagram em webhooks
  * Necessário para receber eventos de DM e comentários
+ * POST /{ig-user-id}/subscribed_apps
  */
 export async function subscribeToWebhook(
   accessToken: string,
   instagramAccountId: string
 ): Promise<boolean> {
   try {
-    console.log('📡 Registrando webhook no Instagram...');
+    console.log('📡 Inscrevendo conta do Instagram em webhooks...');
     console.log('👤 Account ID:', instagramAccountId);
+    console.log('🔗 API URL:', INSTAGRAM_CONFIG.API_URL);
     
-    const webhookUrl = `${SERVER_CONFIG.API_URL}/api/instagram/webhook`;
+    // Campos que queremos receber via webhook
+    const subscribedFields = ['messaging', 'comments'];
     
-    // Para Instagram, o webhook é configurado no Facebook Developers
-    // Mas podemos verificar se está ativo fazendo uma chamada à API
-    // A inscrição em webhooks geralmente é feita via Facebook Developers UI
-    // ou via API do Facebook (não diretamente via Instagram API)
+    // URL da API: POST /{ig-user-id}/subscribed_apps
+    const url = `${INSTAGRAM_CONFIG.API_URL}/${instagramAccountId}/subscribed_apps`;
     
-    console.log('ℹ️ Webhook deve ser configurado no Facebook Developers:');
-    console.log('   URL:', webhookUrl);
-    console.log('   Verify Token:', INSTAGRAM_CONFIG.WEBHOOK_VERIFY_TOKEN);
-    console.log('   Campos: messaging, comments');
+    console.log('📋 URL de inscrição:', url);
+    console.log('📋 Campos a inscrever:', subscribedFields.join(', '));
     
-    // Nota: A inscrição em webhooks do Instagram é feita através do Facebook Graph API
-    // ou via interface do Facebook Developers. Não há endpoint direto na Instagram API.
+    const response = await axios.post(
+      url,
+      {
+        subscribed_fields: subscribedFields.join(','),
+      },
+      {
+        params: {
+          access_token: accessToken,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    
+    console.log('✅ Conta inscrita em webhooks com sucesso');
+    console.log('📋 Resposta:', JSON.stringify(response.data, null, 2));
     
     return true;
   } catch (error: any) {
-    console.error('❌ Erro ao registrar webhook:', error);
+    console.error('❌ Erro ao inscrever conta em webhooks');
+    console.error('📋 Status:', error.response?.status);
+    console.error('📋 Data:', JSON.stringify(error.response?.data, null, 2));
+    console.error('📋 Mensagem:', error.message);
+    
+    // Não falhar completamente se a inscrição falhar
+    // O webhook pode já estar configurado no Facebook Developers
+    console.warn('⚠️ Continuando mesmo com erro na inscrição');
+    console.warn('ℹ️ Verifique se o webhook está configurado no Facebook Developers');
+    
     return false;
   }
 }

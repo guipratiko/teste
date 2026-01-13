@@ -266,14 +266,17 @@ export const oauthCallback = async (
         username: userInfo.username,
       });
       console.log('✅ Nova instância criada');
-      
-      // Tentar registrar webhook (pode falhar, mas não é crítico)
-      try {
-        await subscribeToWebhook(longLivedTokenData.access_token, userInfo.id);
-      } catch (error: any) {
-        console.warn('⚠️ Não foi possível registrar webhook automaticamente');
-        console.warn('📋 Configure manualmente no Facebook Developers');
-      }
+    }
+    
+    // Inscrever conta em webhooks (tanto para nova quanto para atualizada)
+    try {
+      console.log('📡 Inscrevendo conta em webhooks...');
+      await subscribeToWebhook(longLivedTokenData.access_token, userInfo.id);
+      console.log('✅ Webhook inscrito com sucesso');
+    } catch (error: any) {
+      console.warn('⚠️ Não foi possível inscrever webhook automaticamente');
+      console.warn('📋 Erro:', error.message);
+      console.warn('ℹ️ O webhook pode já estar configurado no Facebook Developers');
     }
 
     // Redirecionar para página de gerenciamento
