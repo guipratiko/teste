@@ -8,7 +8,7 @@ import { INSTAGRAM_CONFIG, SERVER_CONFIG } from '../config/constants';
 
 export interface InstagramUserInfo {
   id: string;
-  username: string;
+  username?: string; // Opcional pois pode não estar disponível sem chamar API
   account_type: string;
 }
 
@@ -24,26 +24,33 @@ export interface ReplyCommentParams {
 
 /**
  * Obtém informações do usuário do Instagram
- * Se user_id já estiver disponível, podemos usar diretamente sem fazer chamada à API
- * Caso contrário, tentamos obter via API
+ * Se user_id já estiver disponível, usamos diretamente sem fazer chamada à API
+ * Caso contrário, tentamos obter via API (mas pode falhar para Basic Display)
  */
 export async function getInstagramUserInfo(
   accessToken: string,
-  userId?: string
+  userId?: string | number
 ): Promise<InstagramUserInfo> {
-  // Se já temos user_id, retornar informações básicas
-  if (userId) {
-    console.log('👤 Usando user_id fornecido:', userId);
+  console.log('🔍 getInstagramUserInfo chamado com userId:', userId, 'tipo:', typeof userId);
+  
+  // Se já temos user_id, retornar informações básicas sem chamar API
+  if (userId !== undefined && userId !== null && userId !== '') {
+    console.log('👤 Usando user_id fornecido diretamente:', userId);
+    console.log('✅ Informações do usuário (sem chamada à API)');
     return {
       id: userId.toString(),
-      username: undefined, // Não temos username sem chamar API
-      account_type: 'BUSINESS', // Assumir business baseado nas permissões
+      username: undefined, // Não temos username sem chamar API, mas não é crítico
+      account_type: 'BUSINESS', // Assumir business baseado nas permissões obtidas
     };
   }
+  
+  console.log('⚠️ user_id não disponível, tentando obter via API...');
 
+  // Se não temos user_id, tentar obter via API (pode falhar para Basic Display)
+  console.log('👤 Tentando obter informações do usuário via API...');
+  console.log('⚠️ Nota: Isso pode falhar para Instagram Basic Display API');
+  
   try {
-    console.log('👤 Obtendo informações do usuário via API...');
-    
     // Tentar primeiro sem versão (Basic Display API)
     let url = `${INSTAGRAM_CONFIG.API_URL}/me`;
     console.log('🔗 URL:', url);
@@ -79,18 +86,8 @@ export async function getInstagramUserInfo(
     console.error('📋 Status:', error.response?.status);
     console.error('📋 Data:', JSON.stringify(error.response?.data, null, 2));
     
-    // Se falhar e não tiver userId, lançar erro
-    if (!userId) {
-      throw new Error('Erro ao obter informações do usuário do Instagram');
-    }
-    
-    // Se tiver userId, retornar informações básicas
-    console.log('⚠️ Usando user_id como fallback');
-    return {
-      id: userId.toString(),
-      username: undefined,
-      account_type: 'BUSINESS',
-    };
+    // Se não tiver userId e falhar, lançar erro
+    throw new Error('Erro ao obter informações do usuário do Instagram e user_id não disponível');
   }
 }
 

@@ -201,6 +201,7 @@ export const oauthCallback = async (
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
     // Obter informações do usuário (usar user_id da resposta se disponível)
+    console.log('📋 User ID disponível:', shortLivedTokenData.user_id);
     const userInfo = await getInstagramUserInfo(longLivedTokenData.access_token, shortLivedTokenData.user_id);
 
     // Criar ou atualizar instância
