@@ -181,7 +181,18 @@ export const oauthCallback = async (
     }
 
     // Decodificar state
-    const stateData = JSON.parse(decodeURIComponent(state as string));
+    let stateData;
+    try {
+      const decodedState = decodeURIComponent(state as string);
+      console.log('📋 State decodificado:', decodedState);
+      stateData = JSON.parse(decodedState);
+    } catch (error: any) {
+      console.error('❌ Erro ao decodificar state:', error);
+      console.error('📋 State recebido:', state);
+      res.redirect(`${process.env.FRONTEND_URL || 'https://app.clerky.com.br'}/gerenciador-conexoes?error=invalid_state`);
+      return;
+    }
+    
     const { userId, instanceName } = stateData;
 
     // Limpar código: remover #_ se presente (conforme documentação)
