@@ -307,6 +307,40 @@ export async function replyToComment(
 }
 
 /**
+ * Consulta informações completas sobre webhooks inscritos
+ * GET /{api_version}/{ig_user_id}/subscribed_apps
+ * 
+ * Retorna a resposta completa da API incluindo campos inscritos e outras informações
+ */
+export async function getSubscribedAppsInfo(
+  accessToken: string,
+  instagramAccountId: string
+): Promise<any> {
+  try {
+    const url = `${INSTAGRAM_CONFIG.API_URL}/${INSTAGRAM_CONFIG.API_VERSION}/${instagramAccountId}/subscribed_apps`;
+    
+    console.log('🔍 Consultando webhooks inscritos...');
+    console.log('👤 Account ID:', instagramAccountId);
+    console.log('🔗 URL:', url);
+    
+    const response = await axios.get(url, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+    
+    console.log('✅ Resposta recebida:', JSON.stringify(response.data, null, 2));
+    
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Erro ao consultar webhooks inscritos');
+    console.error('📋 Status:', error.response?.status);
+    console.error('📋 Data:', JSON.stringify(error.response?.data, null, 2));
+    throw error;
+  }
+}
+
+/**
  * Verifica quais campos estão inscritos em webhooks
  * GET /{api_version}/{ig_user_id}/subscribed_apps
  * 
@@ -318,17 +352,9 @@ export async function getSubscribedFields(
   instagramAccountId: string
 ): Promise<string[]> {
   try {
-    const url = `${INSTAGRAM_CONFIG.API_URL}/${INSTAGRAM_CONFIG.API_VERSION}/${instagramAccountId}/subscribed_apps`;
-    
-    const response = await axios.get(url, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    });
-    
-    const subscribedFields = response.data?.data?.[0]?.subscribed_fields || [];
+    const info = await getSubscribedAppsInfo(accessToken, instagramAccountId);
+    const subscribedFields = info?.data?.[0]?.subscribed_fields || [];
     console.log('📋 Campos já inscritos:', subscribedFields.join(', ') || 'Nenhum');
-    
     return subscribedFields;
   } catch (error: any) {
     if (error.response?.data?.error?.code === 100) {

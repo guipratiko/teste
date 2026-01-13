@@ -15,6 +15,7 @@ import {
   getInstagramUserInfo,
   findInstanceByAccountId,
   subscribeToWebhook,
+  getSubscribedAppsInfo,
 } from '../services/instagramService';
 import { IInstagramInstance } from '../models/InstagramInstance';
 import { INSTAGRAM_CONFIG, SERVER_CONFIG } from '../config/constants';
@@ -548,6 +549,64 @@ export const listInstances = async (
     });
   } catch (error: unknown) {
     return next(handleControllerError(error, 'Erro ao listar instâncias'));
+  }
+};
+
+/**
+ * Consultar webhooks inscritos de uma instância
+ * GET /api/instagram/instances/:id/subscribed-apps
+ */
+export const getSubscribedApps = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const instance = await findInstanceById(id);
+
+    if (!instance) {
+      return next(createValidationError('Instância não encontrada'));
+    }
+
+    const info = await getSubscribedAppsInfo(instance.accessToken, instance.instagramAccountId);
+    
+    res.json({
+      success: true,
+      data: info,
+      instanceId: instance._id,
+      accountId: instance.instagramAccountId,
+    });
+  } catch (error: unknown) {
+    return next(handleControllerError(error, 'Erro ao consultar webhooks inscritos'));
+  }
+};
+
+/**
+ * Testar consulta de webhooks com token direto
+ * GET /api/instagram/test/subscribed-apps?token=...&accountId=...
+ */
+export const testSubscribedApps = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { token, accountId } = req.query;
+
+    if (!token || !accountId) {
+      return next(createValidationError('token e accountId são obrigatórios'));
+    }
+
+    const info = await getSubscribedAppsInfo(token as string, accountId as string);
+    
+    res.json({
+      success: true,
+      data: info,
+      accountId: accountId,
+    });
+  } catch (error: unknown) {
+    return next(handleControllerError(error, 'Erro ao consultar webhooks inscritos'));
   }
 };
 

@@ -12,6 +12,8 @@ import {
   createInstagramInstance,
   listInstances,
   getInstance,
+  getSubscribedApps,
+  testSubscribedApps,
   deleteInstagramInstance,
   sendMessage,
   replyComment,
@@ -38,7 +40,11 @@ router.post('/data-deletion', handleDataDeletion);
 router.post('/instances', createInstagramInstance);
 router.get('/instances', listInstances);
 router.get('/instances/:id', getInstance);
+router.get('/instances/:id/subscribed-apps', getSubscribedApps);
 router.delete('/instances/:id', deleteInstagramInstance);
+
+// Rotas de teste
+router.get('/test/subscribed-apps', testSubscribedApps);
 
 // Rotas de mensagens
 router.post('/messages', sendMessage);
