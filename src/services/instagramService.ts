@@ -116,10 +116,17 @@ export async function exchangeCodeForToken(code: string): Promise<{
 
     // A API do Instagram requer application/x-www-form-urlencoded no body
     // IMPORTANTE: redirect_uri deve ser EXATAMENTE igual ao usado na URL de autorização
-    const redirectUri = INSTAGRAM_CONFIG.REDIRECT_URI;
+    // E também deve ser exatamente igual ao configurado no Facebook Developers
+    const redirectUri = INSTAGRAM_CONFIG.REDIRECT_URI.trim(); // Remove espaços em branco
     
     console.log('🔗 Redirect URI usado na troca do código:', redirectUri);
+    console.log('📏 Comprimento do redirect_uri:', redirectUri.length);
+    console.log('🔍 Verificação de caracteres especiais:');
+    console.log('   - Contém espaços?', redirectUri.includes(' ') ? 'SIM ❌' : 'NÃO ✅');
+    console.log('   - Contém quebras de linha?', redirectUri.includes('\n') || redirectUri.includes('\r') ? 'SIM ❌' : 'NÃO ✅');
+    console.log('   - Termina com barra?', redirectUri.endsWith('/') ? 'SIM ⚠️' : 'NÃO ✅');
     console.log('⚠️ IMPORTANTE: Este redirect_uri deve ser IDÊNTICO ao usado na URL de autorização');
+    console.log('⚠️ IMPORTANTE: Este redirect_uri deve ser IDÊNTICO ao configurado no Facebook Developers');
     
     const params = new URLSearchParams();
     params.append('client_id', INSTAGRAM_CONFIG.CLIENT_ID);

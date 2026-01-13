@@ -108,12 +108,19 @@ export const authorizeInstagram = async (
     const scopes = INSTAGRAM_CONFIG.SCOPES.join('%2C');
     
     // IMPORTANTE: redirect_uri deve ser EXATAMENTE igual na URL de autorização e na troca do código
-    const redirectUriRaw = INSTAGRAM_CONFIG.REDIRECT_URI;
+    // E também deve ser exatamente igual ao configurado no Facebook Developers
+    const redirectUriRaw = INSTAGRAM_CONFIG.REDIRECT_URI.trim();
     const redirectUri = encodeURIComponent(redirectUriRaw);
     
-    console.log('🔗 Redirect URI (raw):', redirectUriRaw);
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('🔗 CONFIGURAÇÃO DE REDIRECT_URI');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('📋 Redirect URI (raw do .env):', JSON.stringify(redirectUriRaw));
+    console.log('📏 Comprimento:', redirectUriRaw.length);
     console.log('🔗 Redirect URI (encoded para URL):', redirectUri);
-    console.log('⚠️ IMPORTANTE: Este redirect_uri será usado na troca do código - deve ser IDÊNTICO');
+    console.log('⚠️ Este mesmo valor será usado na troca do código');
+    console.log('⚠️ Deve ser EXATAMENTE igual ao configurado no Facebook Developers');
+    console.log('═══════════════════════════════════════════════════════════');
     
     // Criar state válido (JSON codificado)
     const stateObject = { userId, instanceName };
