@@ -106,7 +106,13 @@ export const authorizeInstagram = async (
     // Scopes separados por vírgula (formato URL: %2C)
     const scopes = INSTAGRAM_CONFIG.SCOPES.join('%2C');
     const redirectUri = encodeURIComponent(INSTAGRAM_CONFIG.REDIRECT_URI);
-    const state = encodeURIComponent(JSON.stringify({ userId, instanceName }));
+    
+    // Criar state válido (JSON codificado)
+    const stateObject = { userId, instanceName };
+    const state = encodeURIComponent(JSON.stringify(stateObject));
+    
+    console.log('📋 State criado:', stateObject);
+    console.log('📋 State codificado:', state);
 
     // URL conforme documentação: https://api.instagram.com/oauth/authorize
     const authUrl = `${INSTAGRAM_CONFIG.OAUTH_URL}?client_id=${INSTAGRAM_CONFIG.CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scopes}&state=${state}`;
@@ -175,47 +181,43 @@ export const oauthCallback = async (
       return;
     }
 
-    if (!code) {
+    if (!code || !state) {
       res.redirect(`${process.env.FRONTEND_URL || 'https://app.clerky.com.br'}/gerenciador-conexoes?error=invalid_callback`);
       return;
     }
 
-    // Decodificar state (pode não estar presente ou ser inválido)
-    let userId: string | undefined;
-    let instanceName: string | undefined;
-    
-    if (state) {
-      try {
-        const decodedState = decodeURIComponent(state as string);
+    // Decodificar state
+    let stateData;
+    try {
+      const stateValue = state as string;
+      console.log('📋 State recebido (raw):', stateValue);
+      
+      // Se o state for "..." (três pontos), significa que não foi passado corretamente
+      if (stateValue === '...' || stateValue === '%2E%2E%2E') {
+        console.warn('⚠️ State inválido recebido (três pontos), usando valores padrão');
+        // Tentar obter userId de outra forma ou usar padrão
+        stateData = {
+          userId: 'unknown-user',
+          instanceName: 'Instagram',
+        };
+      } else {
+        const decodedState = decodeURIComponent(stateValue);
         console.log('📋 State decodificado:', decodedState);
-        
-        // Verificar se não é apenas "..." (três pontos)
-        if (decodedState !== '...' && decodedState.length > 3) {
-          const parsedState = JSON.parse(decodedState);
-          userId = parsedState.userId;
-          instanceName = parsedState.instanceName;
-          console.log('✅ State parseado com sucesso:', { userId, instanceName });
-        } else {
-          console.warn('⚠️ State inválido ou vazio, usando valores padrão');
-        }
-      } catch (error: any) {
-        console.error('❌ Erro ao decodificar state:', error);
-        console.error('📋 State recebido:', state);
-        console.warn('⚠️ Continuando sem state, usando valores padrão');
+        stateData = JSON.parse(decodedState);
       }
-    } else {
-      console.warn('⚠️ State não presente na requisição');
+    } catch (error: any) {
+      console.error('❌ Erro ao decodificar state:', error);
+      console.error('📋 State recebido:', state);
+      // Usar valores padrão em vez de redirecionar com erro
+      console.warn('⚠️ Usando valores padrão para userId e instanceName');
+      stateData = {
+        userId: 'unknown-user',
+        instanceName: 'Instagram',
+      };
     }
     
-    // Se não tiver userId do state, tentar obter de outra forma ou usar padrão
-    if (!userId) {
-      console.warn('⚠️ userId não disponível no state, usando valor padrão');
-      userId = 'unknown-user'; // Valor padrão - em produção, isso deve ser tratado diferente
-    }
-    
-    if (!instanceName) {
-      instanceName = 'Instagram'; // Valor padrão
-    }
+    const { userId, instanceName } = stateData;
+    console.log('✅ Usando userId:', userId, 'instanceName:', instanceName);
 
     // Limpar código: remover #_ se presente (conforme documentação)
     let cleanCode = code as string;
