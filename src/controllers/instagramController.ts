@@ -15,7 +15,7 @@ import {
   findInstanceByAccountId,
 } from '../services/instagramService';
 import { IInstagramInstance } from '../models/InstagramInstance';
-import { INSTAGRAM_CONFIG } from '../config/constants';
+import { INSTAGRAM_CONFIG, SERVER_CONFIG } from '../config/constants';
 import { createValidationError, handleControllerError } from '../middleware/errorHandler';
 import { verifyWebhookToken, validateWebhookSignature } from '../utils/webhookValidator';
 import { RequestWithRawBody } from '../middleware/rawBody';
@@ -23,6 +23,53 @@ import { RequestWithRawBody } from '../middleware/rawBody';
 interface AuthRequest extends Request {
   userId?: string;
 }
+
+/**
+ * Valida configuração da URL de callback
+ * GET /api/instagram/auth/validate-callback
+ */
+export const validateCallback = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const redirectUri = INSTAGRAM_CONFIG.REDIRECT_URI;
+    const expectedUrl = `${SERVER_CONFIG.API_URL}/api/instagram/auth/callback`;
+    const currentUrl = `${req.protocol}://${req.headers.host}/api/instagram/auth/callback`;
+
+    const isValid = redirectUri === expectedUrl || 
+                    redirectUri === currentUrl ||
+                    redirectUri === `${process.env.API_URL}/api/instagram/auth/callback`;
+
+    res.json({
+      status: 'ok',
+      configured: {
+        redirectUri,
+        expectedUrl,
+        currentUrl,
+        isValid,
+      },
+      environment: {
+        API_URL: SERVER_CONFIG.API_URL,
+        INSTAGRAM_REDIRECT_URI: INSTAGRAM_CONFIG.REDIRECT_URI,
+        CLIENT_ID: INSTAGRAM_CONFIG.CLIENT_ID ? '***configurado***' : '❌ não configurado',
+        CLIENT_SECRET: INSTAGRAM_CONFIG.CLIENT_SECRET ? '***configurado***' : '❌ não configurado',
+        WEBHOOK_VERIFY_TOKEN: INSTAGRAM_CONFIG.WEBHOOK_VERIFY_TOKEN ? '***configurado***' : '❌ não configurado',
+      },
+      message: isValid
+        ? '✅ URL de callback configurada corretamente'
+        : '⚠️ URL de callback pode estar incorreta',
+      recommendations: !isValid ? [
+        `Configure INSTAGRAM_REDIRECT_URI como: ${expectedUrl}`,
+        `Ou como: ${currentUrl}`,
+        'Certifique-se de que a URL está registrada no Facebook Developers',
+      ] : [],
+    });
+  } catch (error: unknown) {
+    return next(handleControllerError(error, 'Erro ao validar callback'));
+  }
+};
 
 /**
  * Inicia fluxo OAuth do Instagram
@@ -41,12 +88,28 @@ export const authorizeInstagram = async (
       return next(createValidationError('userId é obrigatório'));
     }
 
+    // Validar se REDIRECT_URI está configurado
+    if (!INSTAGRAM_CONFIG.REDIRECT_URI) {
+      console.error('❌ INSTAGRAM_REDIRECT_URI não está configurado');
+      return next(createValidationError('URL de callback não configurada. Configure INSTAGRAM_REDIRECT_URI'));
+    }
+
+    // Validar se CLIENT_ID está configurado
+    if (!INSTAGRAM_CONFIG.CLIENT_ID) {
+      console.error('❌ INSTAGRAM_CLIENT_ID não está configurado');
+      return next(createValidationError('Client ID não configurado. Configure INSTAGRAM_CLIENT_ID'));
+    }
+
     // Construir URL de autorização
     const scopes = INSTAGRAM_CONFIG.SCOPES.join('%2C');
     const redirectUri = encodeURIComponent(INSTAGRAM_CONFIG.REDIRECT_URI);
     const state = encodeURIComponent(JSON.stringify({ userId, instanceName }));
 
     const authUrl = `${INSTAGRAM_CONFIG.OAUTH_URL}?force_reauth=true&client_id=${INSTAGRAM_CONFIG.CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scopes}&state=${state}`;
+
+    console.log('🔗 URL de autorização gerada');
+    console.log('📋 Redirect URI usado:', INSTAGRAM_CONFIG.REDIRECT_URI);
+    console.log('🔑 Client ID:', INSTAGRAM_CONFIG.CLIENT_ID);
 
     res.redirect(authUrl);
   } catch (error: unknown) {
@@ -64,6 +127,12 @@ export const oauthCallback = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    console.log('📥 Callback OAuth recebido');
+    console.log('📋 Query params:', req.query);
+    console.log('🌐 URL completa:', req.url);
+    console.log('🔗 Host:', req.headers.host);
+    console.log('📡 Protocol:', req.protocol);
+
     const { code, state, error } = req.query;
 
     if (error) {

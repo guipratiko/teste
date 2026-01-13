@@ -6,6 +6,7 @@ import { Router } from 'express';
 import {
   authorizeInstagram,
   oauthCallback,
+  validateCallback,
   verifyWebhook,
   receiveWebhook,
   createInstagramInstance,
@@ -21,6 +22,7 @@ import {
 const router = Router();
 
 // Rotas de autenticação OAuth
+router.get('/auth/validate-callback', validateCallback);
 router.get('/auth/authorize', authorizeInstagram);
 router.get('/auth/callback', oauthCallback);
 
