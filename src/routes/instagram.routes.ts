@@ -1,0 +1,45 @@
+/**
+ * Rotas do Instagram
+ */
+
+import { Router } from 'express';
+import {
+  authorizeInstagram,
+  oauthCallback,
+  verifyWebhook,
+  receiveWebhook,
+  createInstagramInstance,
+  listInstances,
+  getInstance,
+  deleteInstagramInstance,
+  sendMessage,
+  replyComment,
+  handleDeauthorize,
+  handleDataDeletion,
+} from '../controllers/instagramController';
+
+const router = Router();
+
+// Rotas de autenticação OAuth
+router.get('/auth/authorize', authorizeInstagram);
+router.get('/auth/callback', oauthCallback);
+
+// Rotas de webhook (públicas - validação por assinatura)
+router.get('/webhook', verifyWebhook);
+router.post('/webhook', receiveWebhook);
+
+// Rotas de desautorização e exclusão de dados
+router.post('/deauthorize', handleDeauthorize);
+router.post('/data-deletion', handleDataDeletion);
+
+// Rotas de instâncias
+router.post('/instances', createInstagramInstance);
+router.get('/instances', listInstances);
+router.get('/instances/:id', getInstance);
+router.delete('/instances/:id', deleteInstagramInstance);
+
+// Rotas de mensagens
+router.post('/messages', sendMessage);
+router.post('/comments/:id/replies', replyComment);
+
+export default router;

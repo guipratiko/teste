@@ -1,0 +1,41 @@
+{
+  "name": "clerky-instagram-test",
+  "version": "1.0.0",
+  "description": "Serviço de teste para integração do Instagram - Clerky",
+  "main": "dist/server.js",
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "npx tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "clerky",
+    "instagram",
+    "api",
+    "test"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.5",
+    "@types/uuid": "^9.0.8",
+    "axios": "^1.13.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "follow-redirects": "^1.15.11",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.3",
+    "typescript": "^5.3.3",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "ts-node-dev": "^2.0.0"
+  }
+}
