@@ -133,6 +133,29 @@ export const oauthCallback = async (
     console.log('🔗 Host:', req.headers.host);
     console.log('📡 Protocol:', req.protocol);
 
+    // Verificar se é uma verificação de webhook (Instagram pode verificar o callback também)
+    const hubMode = req.query['hub.mode'] as string;
+    const hubChallenge = req.query['hub.challenge'] as string;
+    const hubVerifyToken = req.query['hub.verify_token'] as string;
+
+    if (hubMode === 'subscribe' && hubChallenge && hubVerifyToken) {
+      console.log('🔍 Verificação de webhook detectada no callback');
+      const verifiedChallenge = verifyWebhookToken(hubMode, hubVerifyToken, hubChallenge);
+      
+      if (verifiedChallenge) {
+        console.log('✅ Webhook verificado, retornando challenge:', verifiedChallenge);
+        // Retornar o challenge como texto puro (não JSON)
+        res.setHeader('Content-Type', 'text/plain');
+        res.status(200).send(verifiedChallenge);
+        return;
+      } else {
+        console.error('❌ Token de verificação inválido');
+        res.status(403).send('Forbidden');
+        return;
+      }
+    }
+
+    // Processar como callback OAuth normal
     const { code, state, error } = req.query;
 
     if (error) {
@@ -201,12 +224,21 @@ export const verifyWebhook = async (
     const token = req.query['hub.verify_token'] as string;
     const challenge = req.query['hub.challenge'] as string;
 
+    console.log('🔍 Verificação de webhook recebida');
+    console.log('📋 Mode:', mode);
+    console.log('🔑 Token:', token ? '***fornecido***' : 'não fornecido');
+    console.log('🎯 Challenge:', challenge);
+
     const verifiedChallenge = verifyWebhookToken(mode, token, challenge);
 
     if (verifiedChallenge) {
+      console.log('✅ Webhook verificado, retornando challenge:', verifiedChallenge);
+      // Retornar o challenge como texto puro (não JSON)
+      res.setHeader('Content-Type', 'text/plain');
       res.status(200).send(verifiedChallenge);
     } else {
-      res.status(403).json({ error: 'Token de verificação inválido' });
+      console.error('❌ Token de verificação inválido');
+      res.status(403).send('Forbidden');
     }
   } catch (error: unknown) {
     return next(handleControllerError(error, 'Erro ao verificar webhook'));
