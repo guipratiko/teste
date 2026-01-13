@@ -135,16 +135,23 @@ export async function exchangeCodeForToken(code: string): Promise<{
     params.append('redirect_uri', redirectUri);
     params.append('code', code);
 
+    const requestBody = params.toString();
+    
     console.log('📋 Parâmetros enviados:');
     console.log('   - client_id:', INSTAGRAM_CONFIG.CLIENT_ID);
     console.log('   - client_secret:', INSTAGRAM_CONFIG.CLIENT_SECRET ? '***configurado***' : '❌ NÃO CONFIGURADO');
     console.log('   - grant_type: authorization_code');
     console.log('   - redirect_uri:', redirectUri);
     console.log('   - code:', code.substring(0, 20) + '...');
+    console.log('\n📦 Body da requisição (raw):');
+    console.log('   ', requestBody.replace(/client_secret=[^&]+/, 'client_secret=***'));
     console.log('\n⚠️ VERIFICAÇÃO:');
     console.log('   - O CLIENT_ID e CLIENT_SECRET devem corresponder ao app usado na URL de autorização');
     console.log('   - O redirect_uri deve ser EXATAMENTE igual ao usado na URL de autorização');
-    console.log('   - Verifique o .env nas linhas 6-7 (CLIENT_ID e CLIENT_SECRET)\n');
+    console.log('   - O redirect_uri deve ser EXATAMENTE igual ao configurado no Facebook Developers');
+    console.log('   - Verifique o .env nas linhas 6-7 (CLIENT_ID e CLIENT_SECRET)');
+    console.log('   - Verifique no Facebook Developers: Valid OAuth Redirect URIs');
+    console.log('   - Códigos são de uso único - se já foi usado, gere um novo código\n');
 
     const response = await axios.post(INSTAGRAM_CONFIG.TOKEN_URL, params.toString(), {
       headers: {
