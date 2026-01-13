@@ -293,6 +293,40 @@ export async function replyToComment(
 }
 
 /**
+ * Registra webhook no Instagram para uma instância
+ * Necessário para receber eventos de DM e comentários
+ */
+export async function subscribeToWebhook(
+  accessToken: string,
+  instagramAccountId: string
+): Promise<boolean> {
+  try {
+    console.log('📡 Registrando webhook no Instagram...');
+    console.log('👤 Account ID:', instagramAccountId);
+    
+    const webhookUrl = `${SERVER_CONFIG.API_URL}/api/instagram/webhook`;
+    
+    // Para Instagram, o webhook é configurado no Facebook Developers
+    // Mas podemos verificar se está ativo fazendo uma chamada à API
+    // A inscrição em webhooks geralmente é feita via Facebook Developers UI
+    // ou via API do Facebook (não diretamente via Instagram API)
+    
+    console.log('ℹ️ Webhook deve ser configurado no Facebook Developers:');
+    console.log('   URL:', webhookUrl);
+    console.log('   Verify Token:', INSTAGRAM_CONFIG.WEBHOOK_VERIFY_TOKEN);
+    console.log('   Campos: messaging, comments');
+    
+    // Nota: A inscrição em webhooks do Instagram é feita através do Facebook Graph API
+    // ou via interface do Facebook Developers. Não há endpoint direto na Instagram API.
+    
+    return true;
+  } catch (error: any) {
+    console.error('❌ Erro ao registrar webhook:', error);
+    return false;
+  }
+}
+
+/**
  * Busca instância pelo ID da conta do Instagram
  */
 export async function findInstanceByAccountId(

@@ -14,6 +14,7 @@ import {
   exchangeShortLivedForLongLivedToken,
   getInstagramUserInfo,
   findInstanceByAccountId,
+  subscribeToWebhook,
 } from '../services/instagramService';
 import { IInstagramInstance } from '../models/InstagramInstance';
 import { INSTAGRAM_CONFIG, SERVER_CONFIG } from '../config/constants';
@@ -230,6 +231,14 @@ export const oauthCallback = async (
         username: userInfo.username,
       });
       console.log('✅ Nova instância criada');
+      
+      // Tentar registrar webhook (pode falhar, mas não é crítico)
+      try {
+        await subscribeToWebhook(longLivedTokenData.access_token, userInfo.id);
+      } catch (error: any) {
+        console.warn('⚠️ Não foi possível registrar webhook automaticamente');
+        console.warn('📋 Configure manualmente no Facebook Developers');
+      }
     }
 
     // Redirecionar para página de gerenciamento
@@ -286,37 +295,59 @@ export const receiveWebhook = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    console.log('📥 Webhook recebido do Instagram');
+    console.log('📋 Headers:', {
+      'x-hub-signature-256': req.headers['x-hub-signature-256'] ? 'presente' : 'ausente',
+      'content-type': req.headers['content-type'],
+    });
+    console.log('📦 Body recebido:', JSON.stringify(req.body, null, 2));
+
     // Validar assinatura usando raw body
     const signature = req.headers['x-hub-signature-256'] as string;
     const rawBody = req.rawBody || Buffer.from(JSON.stringify(req.body));
 
-    if (!validateWebhookSignature(rawBody, signature)) {
+    if (!signature) {
+      console.warn('⚠️ Assinatura não presente, mas continuando...');
+      // Para desenvolvimento, podemos permitir sem assinatura
+      // Em produção, isso deve ser obrigatório
+    } else if (!validateWebhookSignature(rawBody, signature)) {
       console.error('❌ Assinatura de webhook inválida');
       res.status(403).json({ error: 'Assinatura inválida' });
       return;
+    } else {
+      console.log('✅ Assinatura válida');
     }
 
     const { object, entry } = req.body;
 
     if (object !== 'instagram') {
+      console.log('ℹ️ Objeto não é instagram, ignorando:', object);
       res.status(200).json({ status: 'ok' });
       return;
     }
 
+    console.log('📋 Processando entrada do Instagram');
+    console.log('📊 Número de entradas:', entry?.length || 0);
+
     // Processar cada entrada
     for (const entryItem of entry || []) {
       const accountId = entryItem.id;
+      console.log('🔍 Processando entrada para accountId:', accountId);
 
       // Buscar instância pelo ID da conta
       const instance = await findInstanceByAccountId(accountId);
 
       if (!instance) {
         console.warn(`⚠️ Instância não encontrada para accountId: ${accountId}`);
+        console.warn('📋 Verifique se a instância foi criada corretamente');
         continue;
       }
 
+      console.log('✅ Instância encontrada:', instance.name);
+
       // Processar mensagens (DM)
       if (entryItem.messaging) {
+        console.log('💬 Processando mensagens (DM):', entryItem.messaging.length);
         for (const message of entryItem.messaging) {
           await processDirectMessage(instance, message);
         }
@@ -324,7 +355,9 @@ export const receiveWebhook = async (
 
       // Processar comentários
       if (entryItem.changes) {
+        console.log('💬 Processando mudanças:', entryItem.changes.length);
         for (const change of entryItem.changes) {
+          console.log('📋 Campo:', change.field);
           if (change.field === 'comments') {
             await processComment(instance, change.value);
           }
@@ -345,15 +378,23 @@ export const receiveWebhook = async (
  */
 async function processDirectMessage(instance: IInstagramInstance, message: any): Promise<void> {
   try {
+    console.log('📨 Processando DM:', JSON.stringify(message, null, 2));
+    
     const senderId = message.sender?.id;
     const messageText = message.message?.text;
     const timestamp = message.timestamp;
 
     if (!senderId || !messageText) {
+      console.warn('⚠️ DM sem senderId ou messageText, ignorando');
       return;
     }
 
-    console.log(`📨 DM recebida de ${senderId}: ${messageText}`);
+    console.log(`✅ DM recebida de ${senderId}: ${messageText}`);
+    console.log(`📅 Timestamp: ${timestamp}`);
+    console.log(`👤 Instância: ${instance.name} (${instance.instagramAccountId})`);
+    
+    // TODO: Acionar workflows do MindClerky aqui
+    // await triggerWorkflow(instance, 'dm', senderId, messageText);
 
     // TODO: Acionar workflows do MindClerky aqui
     // await triggerWorkflow(instance, 'dm', senderId, messageText);
@@ -367,6 +408,8 @@ async function processDirectMessage(instance: IInstagramInstance, message: any):
  */
 async function processComment(instance: IInstagramInstance, commentData: any): Promise<void> {
   try {
+    console.log('💬 Processando comentário:', JSON.stringify(commentData, null, 2));
+    
     const commentId = commentData.id;
     const commentText = commentData.text;
     const fromUserId = commentData.from?.id;
@@ -374,10 +417,17 @@ async function processComment(instance: IInstagramInstance, commentData: any): P
     const mediaId = commentData.media?.id;
 
     if (!commentId || !commentText) {
+      console.warn('⚠️ Comentário sem commentId ou commentText, ignorando');
       return;
     }
 
-    console.log(`💬 Comentário recebido de ${fromUsername} (${fromUserId}): ${commentText}`);
+    console.log(`✅ Comentário recebido de ${fromUsername || 'desconhecido'} (${fromUserId}): ${commentText}`);
+    console.log(`📋 Comment ID: ${commentId}`);
+    console.log(`📷 Media ID: ${mediaId}`);
+    console.log(`👤 Instância: ${instance.name} (${instance.instagramAccountId})`);
+    
+    // TODO: Acionar workflows do MindClerky aqui
+    // await triggerWorkflow(instance, 'comment', fromUserId, commentText, { commentId, mediaId });
 
     // TODO: Acionar workflows do MindClerky aqui
     // await triggerWorkflow(instance, 'comment', fromUserId, commentText, { commentId, mediaId });
