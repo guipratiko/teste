@@ -519,7 +519,7 @@ export const createInstagramInstance = async (
 
 /**
  * Listar instâncias do usuário
- * GET /api/instagram/instances
+ * GET /api/instagram/instances?userId=... (opcional, se não fornecido lista todas)
  */
 export const listInstances = async (
   req: AuthRequest,
@@ -529,19 +529,26 @@ export const listInstances = async (
   try {
     const userId = req.userId || req.query.userId as string;
 
-    if (!userId) {
-      return next(createValidationError('userId é obrigatório'));
+    // Se userId não for fornecido, listar todas as instâncias (útil para testes)
+    let instances;
+    if (userId) {
+      instances = await findInstancesByUserId(userId);
+    } else {
+      // Listar todas as instâncias
+      const InstagramInstance = (await import('../models/InstagramInstance')).default;
+      instances = await InstagramInstance.find({}).sort({ createdAt: -1 });
+      console.log('📋 Listando todas as instâncias (userId não fornecido)');
     }
-
-    const instances = await findInstancesByUserId(userId);
 
     res.json({
       status: 'success',
+      count: instances.length,
       instances: instances.map((inst) => ({
         id: inst._id,
         name: inst.name,
         instanceName: inst.instanceName,
         username: inst.username,
+        instagramAccountId: inst.instagramAccountId,
         status: inst.status,
         createdAt: inst.createdAt,
         updatedAt: inst.updatedAt,
