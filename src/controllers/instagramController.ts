@@ -68,11 +68,13 @@ export const oauthCallback = async (
 
     if (error) {
       console.error('Erro no OAuth:', error);
-      return res.redirect(`${process.env.FRONTEND_URL || 'https://app.clerky.com.br'}/gerenciador-conexoes?error=oauth_failed`);
+      res.redirect(`${process.env.FRONTEND_URL || 'https://app.clerky.com.br'}/gerenciador-conexoes?error=oauth_failed`);
+      return;
     }
 
     if (!code || !state) {
-      return res.redirect(`${process.env.FRONTEND_URL || 'https://app.clerky.com.br'}/gerenciador-conexoes?error=invalid_callback`);
+      res.redirect(`${process.env.FRONTEND_URL || 'https://app.clerky.com.br'}/gerenciador-conexoes?error=invalid_callback`);
+      return;
     }
 
     // Decodificar state
@@ -111,7 +113,8 @@ export const oauthCallback = async (
     res.redirect(`${process.env.FRONTEND_URL || 'https://app.clerky.com.br'}/gerenciador-conexoes?success=instagram_connected&instanceId=${instance._id}`);
   } catch (error: unknown) {
     console.error('Erro no callback OAuth:', error);
-    return res.redirect(`${process.env.FRONTEND_URL || 'https://app.clerky.com.br'}/gerenciador-conexoes?error=connection_failed`);
+    res.redirect(`${process.env.FRONTEND_URL || 'https://app.clerky.com.br'}/gerenciador-conexoes?error=connection_failed`);
+    return;
   }
 };
 
@@ -157,13 +160,15 @@ export const receiveWebhook = async (
 
     if (!validateWebhookSignature(rawBody, signature)) {
       console.error('❌ Assinatura de webhook inválida');
-      return res.status(403).json({ error: 'Assinatura inválida' });
+      res.status(403).json({ error: 'Assinatura inválida' });
+      return;
     }
 
     const { object, entry } = req.body;
 
     if (object !== 'instagram') {
-      return res.status(200).json({ status: 'ok' });
+      res.status(200).json({ status: 'ok' });
+      return;
     }
 
     // Processar cada entrada
@@ -462,7 +467,8 @@ export const handleDeauthorize = async (
     const { signed_request } = req.body;
 
     if (!signed_request) {
-      return res.status(400).json({ error: 'signed_request é obrigatório' });
+      res.status(400).json({ error: 'signed_request é obrigatório' });
+      return;
     }
 
     // TODO: Validar signed_request e processar desautorização
@@ -487,7 +493,8 @@ export const handleDataDeletion = async (
     const { signed_request } = req.body;
 
     if (!signed_request) {
-      return res.status(400).json({ error: 'signed_request é obrigatório' });
+      res.status(400).json({ error: 'signed_request é obrigatório' });
+      return;
     }
 
     // TODO: Validar signed_request e processar exclusão de dados
