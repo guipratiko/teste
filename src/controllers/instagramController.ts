@@ -598,6 +598,10 @@ export const testSubscribedApps = async (
       return next(createValidationError('token e accountId são obrigatórios'));
     }
 
+    console.log('🧪 Testando consulta de webhooks inscritos...');
+    console.log('👤 Account ID:', accountId);
+    console.log('🔑 Token (primeiros 20 chars):', (token as string).substring(0, 20) + '...');
+
     const info = await getSubscribedAppsInfo(token as string, accountId as string);
     
     res.json({
@@ -605,8 +609,23 @@ export const testSubscribedApps = async (
       data: info,
       accountId: accountId,
     });
-  } catch (error: unknown) {
-    return next(handleControllerError(error, 'Erro ao consultar webhooks inscritos'));
+  } catch (error: any) {
+    console.error('❌ Erro detalhado ao consultar webhooks:', error);
+    
+    // Retornar erro mais detalhado
+    if (error.response) {
+      const status = error.response.status;
+      const errorData = error.response.data;
+      
+      res.status(status).json({
+        success: false,
+        status: status,
+        error: errorData,
+        message: `Erro da API do Instagram: ${errorData?.error?.message || error.message}`,
+      });
+    } else {
+      return next(handleControllerError(error, 'Erro ao consultar webhooks inscritos'));
+    }
   }
 };
 
