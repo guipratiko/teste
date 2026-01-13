@@ -140,6 +140,10 @@ export const oauthCallback = async (
 
     if (hubMode === 'subscribe' && hubChallenge && hubVerifyToken) {
       console.log('🔍 Verificação de webhook detectada no callback');
+      console.log('📋 Configuração atual:');
+      console.log('   - WEBHOOK_VERIFY_TOKEN configurado:', INSTAGRAM_CONFIG.WEBHOOK_VERIFY_TOKEN ? 'Sim' : 'Não');
+      console.log('   - Valor esperado:', INSTAGRAM_CONFIG.WEBHOOK_VERIFY_TOKEN || '(não configurado)');
+      
       const verifiedChallenge = verifyWebhookToken(hubMode, hubVerifyToken, hubChallenge);
       
       if (verifiedChallenge) {
@@ -150,6 +154,9 @@ export const oauthCallback = async (
         return;
       } else {
         console.error('❌ Token de verificação inválido');
+        console.error('   - Token recebido:', hubVerifyToken);
+        console.error('   - Token esperado:', INSTAGRAM_CONFIG.WEBHOOK_VERIFY_TOKEN || '(não configurado)');
+        console.error('   - Dica: Configure INSTAGRAM_WEBHOOK_VERIFY_TOKEN no .env ou variáveis de ambiente');
         res.status(403).send('Forbidden');
         return;
       }

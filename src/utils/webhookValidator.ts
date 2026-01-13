@@ -47,8 +47,18 @@ export function verifyWebhookToken(
   token: string,
   challenge: string
 ): string | null {
+  console.log('🔐 Verificando token de webhook');
+  console.log('📋 Mode recebido:', mode);
+  console.log('🔑 Token recebido:', token);
+  console.log('🎯 Challenge recebido:', challenge);
+  console.log('✅ Token esperado:', INSTAGRAM_CONFIG.WEBHOOK_VERIFY_TOKEN);
+  console.log('🔍 Comparação:', token === INSTAGRAM_CONFIG.WEBHOOK_VERIFY_TOKEN ? '✅ Match' : '❌ Não corresponde');
+
   if (mode === 'subscribe' && token === INSTAGRAM_CONFIG.WEBHOOK_VERIFY_TOKEN) {
+    console.log('✅ Token válido, retornando challenge');
     return challenge;
   }
+  
+  console.log('❌ Token inválido ou mode incorreto');
   return null;
 }

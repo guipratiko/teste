@@ -39,7 +39,6 @@ const InstagramInstanceSchema: Schema = new Schema(
     userId: {
       type: String,
       required: [true, 'Usuário é obrigatório'],
-      index: true,
     },
     token: {
       type: String,
@@ -50,7 +49,6 @@ const InstagramInstanceSchema: Schema = new Schema(
     instagramAccountId: {
       type: String,
       required: [true, 'ID da conta do Instagram é obrigatório'],
-      index: true,
     },
     accessToken: {
       type: String,
