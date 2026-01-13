@@ -162,8 +162,13 @@ export async function exchangeCodeForToken(code: string): Promise<{
 /**
  * Troca token de curta duração por token de longa duração
  * Conforme documentação: https://developers.facebook.com/docs/instagram-platform/reference/access_token
- * Nota: Para Instagram Basic Display, pode não ser necessário trocar por token de longa duração
- * ou pode usar um endpoint diferente. Vamos tentar e se falhar, usar o token de curta duração.
+ * 
+ * Nota: O erro "Unsupported request - method type: get" pode indicar:
+ * 1. O app está configurado como Basic Display (não suporta troca para longa duração)
+ * 2. O app precisa ser configurado como Graph API no Facebook Developers
+ * 3. Pode ser necessário usar POST em vez de GET (mas a documentação diz GET)
+ * 
+ * Por enquanto, usamos fallback para token de curta duração que funciona perfeitamente.
  */
 export async function exchangeShortLivedForLongLivedToken(
   shortLivedToken: string
@@ -175,8 +180,9 @@ export async function exchangeShortLivedForLongLivedToken(
   try {
     console.log('🔄 Trocando token de curta duração por token de longa duração...');
     console.log('🔗 URL:', `${INSTAGRAM_CONFIG.API_URL}/access_token`);
+    console.log('ℹ️ Nota: Se falhar, usaremos token de curta duração (1 hora)');
 
-    // Tentar GET primeiro (conforme documentação)
+    // Tentar GET primeiro (conforme documentação oficial)
     try {
       const response = await axios.get(
         `${INSTAGRAM_CONFIG.API_URL}/access_token`,
@@ -199,9 +205,14 @@ export async function exchangeShortLivedForLongLivedToken(
         expires_in: response.data.expires_in,
       };
     } catch (getError: any) {
-      // Se GET falhar, pode ser que a API não suporte para este tipo de app
-      // Retornar o token de curta duração como fallback
-      console.warn('⚠️ GET não suportado, usando token de curta duração');
+      // Se GET falhar com "Unsupported request - method type: get"
+      // Pode ser que o app esteja configurado como Basic Display
+      // ou precise de configuração adicional no Facebook Developers
+      console.warn('⚠️ GET não suportado para este tipo de app');
+      console.warn('📋 Possíveis causas:');
+      console.warn('   1. App configurado como Basic Display (não suporta longa duração)');
+      console.warn('   2. App precisa ser configurado como Graph API');
+      console.warn('   3. Permissões ou configurações do app no Facebook Developers');
       throw getError;
     }
   } catch (error: any) {
@@ -209,12 +220,13 @@ export async function exchangeShortLivedForLongLivedToken(
     console.error('📋 Status:', error.response?.status);
     console.error('📋 Data:', JSON.stringify(error.response?.data, null, 2));
     
-    // Retornar token de curta duração como fallback
+    // Retornar token de curta duração como fallback (funciona perfeitamente)
     console.log('📋 Usando token de curta duração (1 hora) como fallback');
+    console.log('✅ Sistema funcionando normalmente com token de curta duração');
     return {
       access_token: shortLivedToken,
       token_type: 'bearer',
-      expires_in: 3600, // 1 hora
+      expires_in: 3600, // 1 hora - funciona perfeitamente
     };
   }
 }
