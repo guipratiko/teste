@@ -126,13 +126,27 @@ export async function exchangeCodeForToken(code: string): Promise<{
     console.log('✅ Token de acesso obtido com sucesso');
     console.log('📋 Resposta completa:', JSON.stringify(response.data, null, 2));
     
+    // A resposta pode vir em formato direto ou dentro de data[0]
+    // Conforme documentação: { "data": [{ "access_token": "...", "user_id": "...", "permissions": "..." }] }
+    let responseData = response.data;
+    
+    // Se a resposta estiver dentro de data[0], extrair
+    if (responseData.data && Array.isArray(responseData.data) && responseData.data.length > 0) {
+      console.log('📋 Resposta está em formato data[0], extraindo...');
+      responseData = responseData.data[0];
+    }
+    
     // A resposta pode ter diferentes formatos
     const tokenData = {
-      access_token: response.data.access_token,
-      token_type: response.data.token_type || 'bearer',
-      expires_in: response.data.expires_in || 3600, // Default 1 hora se não especificado
-      user_id: response.data.user_id,
-      permissions: response.data.permissions || [],
+      access_token: responseData.access_token,
+      token_type: responseData.token_type || 'bearer',
+      expires_in: responseData.expires_in || 3600, // Default 1 hora se não especificado
+      user_id: responseData.user_id,
+      permissions: responseData.permissions ? 
+        (typeof responseData.permissions === 'string' 
+          ? responseData.permissions.split(',') 
+          : responseData.permissions) 
+        : [],
     };
 
     console.log('📋 Token type:', tokenData.token_type);

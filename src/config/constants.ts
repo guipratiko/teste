@@ -30,7 +30,7 @@ export const INSTAGRAM_CONFIG = {
   DATA_DELETION_URL: process.env.INSTAGRAM_DATA_DELETION_URL || '',
   API_URL: process.env.INSTAGRAM_API_URL || 'https://graph.instagram.com',
   API_VERSION: process.env.INSTAGRAM_API_VERSION || 'v24.0',
-  OAUTH_URL: 'https://api.instagram.com/oauth/authorize',
+  OAUTH_URL: 'https://www.instagram.com/oauth/authorize', // Conforme documentação oficial
   TOKEN_URL: 'https://api.instagram.com/oauth/access_token',
   SCOPES: [
     'instagram_business_basic', // Obrigatório
