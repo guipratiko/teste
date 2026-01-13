@@ -238,6 +238,35 @@ export const oauthCallback = async (
     // Trocar código por token de curta duração
     const shortLivedTokenData = await exchangeCodeForToken(cleanCode);
 
+    // ============================================
+    // PARAR AQUI - Mostrar token nos logs
+    // ============================================
+    console.log('\n');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('🎯 TOKEN DE ACESSO OBTIDO COM SUCESSO');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('📋 Access Token:', shortLivedTokenData.access_token);
+    console.log('📋 Token Type:', shortLivedTokenData.token_type);
+    console.log('📋 Expires In:', shortLivedTokenData.expires_in, 'segundos');
+    console.log('📋 User ID:', shortLivedTokenData.user_id);
+    console.log('📋 Permissions:', shortLivedTokenData.permissions);
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('\n');
+    
+    // Retornar resposta simples indicando que parou aqui
+    res.json({
+      status: 'success',
+      message: 'Token obtido com sucesso. Verifique os logs do servidor.',
+      token: shortLivedTokenData.access_token,
+      token_type: shortLivedTokenData.token_type,
+      expires_in: shortLivedTokenData.expires_in,
+      user_id: shortLivedTokenData.user_id,
+      permissions: shortLivedTokenData.permissions,
+    });
+    return;
+
+    // Código abaixo não será executado (comentado para referência)
+    /*
     // Trocar token de curta duração por token de longa duração
     const longLivedTokenData = await exchangeShortLivedForLongLivedToken(shortLivedTokenData.access_token);
 
@@ -290,6 +319,7 @@ export const oauthCallback = async (
 
     // Redirecionar para página de gerenciamento
     res.redirect(`${process.env.FRONTEND_URL || 'https://app.clerky.com.br'}/gerenciador-conexoes?success=instagram_connected&instanceId=${instance._id}`);
+    */
   } catch (error: unknown) {
     console.error('Erro no callback OAuth:', error);
     res.redirect(`${process.env.FRONTEND_URL || 'https://app.clerky.com.br'}/gerenciador-conexoes?error=connection_failed`);
