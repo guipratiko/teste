@@ -110,12 +110,24 @@ export async function exchangeCodeForToken(code: string): Promise<{
     console.log('🔑 Client ID:', INSTAGRAM_CONFIG.CLIENT_ID ? 'Configurado' : '❌ Não configurado');
 
     // A API do Instagram requer application/x-www-form-urlencoded no body
+    // IMPORTANTE: redirect_uri deve ser EXATAMENTE igual ao usado na URL de autorização
+    const redirectUri = INSTAGRAM_CONFIG.REDIRECT_URI;
+    
+    console.log('🔗 Redirect URI usado na troca do código:', redirectUri);
+    console.log('⚠️ IMPORTANTE: Este redirect_uri deve ser IDÊNTICO ao usado na URL de autorização');
+    
     const params = new URLSearchParams();
     params.append('client_id', INSTAGRAM_CONFIG.CLIENT_ID);
     params.append('client_secret', INSTAGRAM_CONFIG.CLIENT_SECRET);
     params.append('grant_type', 'authorization_code');
-    params.append('redirect_uri', INSTAGRAM_CONFIG.REDIRECT_URI);
+    params.append('redirect_uri', redirectUri);
     params.append('code', code);
+
+    console.log('📋 Parâmetros enviados:');
+    console.log('   - client_id:', INSTAGRAM_CONFIG.CLIENT_ID);
+    console.log('   - grant_type: authorization_code');
+    console.log('   - redirect_uri:', redirectUri);
+    console.log('   - code:', code.substring(0, 20) + '...');
 
     const response = await axios.post(INSTAGRAM_CONFIG.TOKEN_URL, params.toString(), {
       headers: {

@@ -106,7 +106,14 @@ export const authorizeInstagram = async (
     // Construir URL de autorização (seguindo documentação oficial)
     // Scopes separados por vírgula (formato URL: %2C)
     const scopes = INSTAGRAM_CONFIG.SCOPES.join('%2C');
-    const redirectUri = encodeURIComponent(INSTAGRAM_CONFIG.REDIRECT_URI);
+    
+    // IMPORTANTE: redirect_uri deve ser EXATAMENTE igual na URL de autorização e na troca do código
+    const redirectUriRaw = INSTAGRAM_CONFIG.REDIRECT_URI;
+    const redirectUri = encodeURIComponent(redirectUriRaw);
+    
+    console.log('🔗 Redirect URI (raw):', redirectUriRaw);
+    console.log('🔗 Redirect URI (encoded para URL):', redirectUri);
+    console.log('⚠️ IMPORTANTE: Este redirect_uri será usado na troca do código - deve ser IDÊNTICO');
     
     // Criar state válido (JSON codificado)
     const stateObject = { userId, instanceName };
