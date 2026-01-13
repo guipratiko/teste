@@ -11,6 +11,7 @@ import {
   sendDirectMessage,
   replyToComment,
   exchangeCodeForToken,
+  exchangeShortLivedForLongLivedToken,
   getInstagramUserInfo,
   findInstanceByAccountId,
 } from '../services/instagramService';
@@ -100,12 +101,14 @@ export const authorizeInstagram = async (
       return next(createValidationError('Client ID não configurado. Configure INSTAGRAM_CLIENT_ID'));
     }
 
-    // Construir URL de autorização
+    // Construir URL de autorização (seguindo documentação oficial)
+    // Scopes separados por vírgula (formato URL: %2C)
     const scopes = INSTAGRAM_CONFIG.SCOPES.join('%2C');
     const redirectUri = encodeURIComponent(INSTAGRAM_CONFIG.REDIRECT_URI);
     const state = encodeURIComponent(JSON.stringify({ userId, instanceName }));
 
-    const authUrl = `${INSTAGRAM_CONFIG.OAUTH_URL}?force_reauth=true&client_id=${INSTAGRAM_CONFIG.CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scopes}&state=${state}`;
+    // URL conforme documentação: https://api.instagram.com/oauth/authorize
+    const authUrl = `${INSTAGRAM_CONFIG.OAUTH_URL}?client_id=${INSTAGRAM_CONFIG.CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scopes}&state=${state}`;
 
     console.log('🔗 URL de autorização gerada');
     console.log('📋 Redirect URI usado:', INSTAGRAM_CONFIG.REDIRECT_URI);
@@ -180,32 +183,65 @@ export const oauthCallback = async (
     const stateData = JSON.parse(decodeURIComponent(state as string));
     const { userId, instanceName } = stateData;
 
-    // Trocar código por token
-    const tokenData = await exchangeCodeForToken(code as string);
+    // Limpar código: remover #_ se presente (conforme documentação)
+    let cleanCode = code as string;
+    if (cleanCode.endsWith('#_')) {
+      cleanCode = cleanCode.replace(/#_$/, '');
+      console.log('🧹 Código limpo (removido #_):', cleanCode.substring(0, 20) + '...');
+    }
+
+    // Trocar código por token de curta duração
+    const shortLivedTokenData = await exchangeCodeForToken(cleanCode);
+
+    // Trocar token de curta duração por token de longa duração
+    let longLivedTokenData;
+    try {
+      longLivedTokenData = await exchangeShortLivedForLongLivedToken(shortLivedTokenData.access_token);
+      console.log('✅ Token de longa duração obtido');
+    } catch (error: any) {
+      console.warn('⚠️ Não foi possível obter token de longa duração, usando token de curta duração');
+      console.warn('📋 Erro:', error.message);
+      // Usar token de curta duração se falhar
+      longLivedTokenData = {
+        access_token: shortLivedTokenData.access_token,
+        token_type: shortLivedTokenData.token_type,
+        expires_in: shortLivedTokenData.expires_in || 3600, // Default 1 hora
+      };
+    }
+
+    // Calcular data de expiração
+    const expiresIn = longLivedTokenData.expires_in || 3600;
+    const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
     // Obter informações do usuário
-    const userInfo = await getInstagramUserInfo(tokenData.access_token);
+    const userInfo = await getInstagramUserInfo(longLivedTokenData.access_token);
 
     // Criar ou atualizar instância
     let instance = await findInstanceByAccountId(userInfo.id);
 
     if (instance) {
       // Atualizar instância existente
-      instance.accessToken = tokenData.access_token;
-      instance.tokenType = tokenData.token_type || 'bearer';
+      instance.accessToken = longLivedTokenData.access_token;
+      instance.tokenType = longLivedTokenData.token_type || 'bearer';
+      instance.tokenExpiresAt = tokenExpiresAt;
+      instance.isLongLived = expiresIn > 3600; // Tokens de longa duração expiram em mais de 1 hora
       instance.username = userInfo.username;
       instance.status = 'connected';
       await instance.save();
+      console.log('✅ Instância atualizada');
     } else {
       // Criar nova instância
       instance = await createInstance({
         name: instanceName || userInfo.username || 'Instagram',
         userId,
         instagramAccountId: userInfo.id,
-        accessToken: tokenData.access_token,
-        tokenType: tokenData.token_type || 'bearer',
+        accessToken: longLivedTokenData.access_token,
+        tokenType: longLivedTokenData.token_type || 'bearer',
+        tokenExpiresAt,
+        isLongLived: expiresIn > 3600,
         username: userInfo.username,
       });
+      console.log('✅ Nova instância criada');
     }
 
     // Redirecionar para página de gerenciamento

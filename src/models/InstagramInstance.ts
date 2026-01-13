@@ -13,6 +13,8 @@ export interface IInstagramInstance extends Document {
   instagramAccountId: string; // ID da conta do Instagram (ex: 17841475047401790)
   accessToken: string; // Token de acesso do Instagram
   tokenType: string; // Tipo do token (geralmente "bearer")
+  tokenExpiresAt?: Date; // Data de expiração do token
+  isLongLived?: boolean; // Se é token de longa duração
   username?: string; // Nome de usuário do Instagram
   status: 'connected' | 'disconnected' | 'error';
   webhookUrl: string; // URL do webhook configurada
@@ -57,6 +59,14 @@ const InstagramInstanceSchema: Schema = new Schema(
     tokenType: {
       type: String,
       default: 'bearer',
+    },
+    tokenExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    isLongLived: {
+      type: Boolean,
+      default: false,
     },
     username: {
       type: String,

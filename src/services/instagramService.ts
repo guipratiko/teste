@@ -47,7 +47,8 @@ export async function getInstagramUserInfo(
 }
 
 /**
- * Troca código de autorização por token de acesso
+ * Troca código de autorização por token de acesso de curta duração
+ * Conforme documentação: https://developers.facebook.com/docs/instagram-platform/reference/access_token
  */
 export async function exchangeCodeForToken(code: string): Promise<{
   access_token: string;
@@ -56,6 +57,10 @@ export async function exchangeCodeForToken(code: string): Promise<{
   user_id?: string;
 }> {
   try {
+    console.log('🔄 Trocando código por token de acesso...');
+    console.log('📋 Código recebido:', code.substring(0, 20) + '...');
+    console.log('🔗 Token URL:', INSTAGRAM_CONFIG.TOKEN_URL);
+
     const response = await axios.post(INSTAGRAM_CONFIG.TOKEN_URL, null, {
       params: {
         client_id: INSTAGRAM_CONFIG.CLIENT_ID,
@@ -66,10 +71,65 @@ export async function exchangeCodeForToken(code: string): Promise<{
       },
     });
 
+    console.log('✅ Token de acesso obtido com sucesso');
+    console.log('📋 Token type:', response.data.token_type);
+    console.log('⏰ Expires in:', response.data.expires_in, 'segundos');
+    console.log('👤 User ID:', response.data.user_id);
+
     return response.data;
   } catch (error: any) {
-    console.error('Erro ao trocar código por token:', error.response?.data || error.message);
+    console.error('❌ Erro ao trocar código por token');
+    console.error('📋 Status:', error.response?.status);
+    console.error('📋 Data:', JSON.stringify(error.response?.data, null, 2));
+    console.error('📋 Message:', error.message);
+    
+    if (error.response?.data?.error) {
+      throw new Error(`Erro ao obter token: ${error.response.data.error.message || error.response.data.error}`);
+    }
+    
     throw new Error('Erro ao obter token de acesso do Instagram');
+  }
+}
+
+/**
+ * Troca token de curta duração por token de longa duração
+ * Conforme documentação: https://developers.facebook.com/docs/instagram-platform/reference/access_token
+ */
+export async function exchangeShortLivedForLongLivedToken(
+  shortLivedToken: string
+): Promise<{
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+}> {
+  try {
+    console.log('🔄 Trocando token de curta duração por token de longa duração...');
+
+    const response = await axios.get(
+      `${INSTAGRAM_CONFIG.API_URL}/${INSTAGRAM_CONFIG.API_VERSION}/access_token`,
+      {
+        params: {
+          grant_type: 'ig_exchange_token',
+          client_secret: INSTAGRAM_CONFIG.CLIENT_SECRET,
+          access_token: shortLivedToken,
+        },
+      }
+    );
+
+    console.log('✅ Token de longa duração obtido com sucesso');
+    console.log('⏰ Expires in:', response.data.expires_in, 'segundos');
+
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Erro ao trocar por token de longa duração');
+    console.error('📋 Status:', error.response?.status);
+    console.error('📋 Data:', JSON.stringify(error.response?.data, null, 2));
+    
+    if (error.response?.data?.error) {
+      throw new Error(`Erro ao obter token de longa duração: ${error.response.data.error.message || error.response.data.error}`);
+    }
+    
+    throw new Error('Erro ao obter token de longa duração do Instagram');
   }
 }
 
@@ -170,6 +230,8 @@ export async function createInstance(data: {
   instagramAccountId: string;
   accessToken: string;
   tokenType?: string;
+  tokenExpiresAt?: Date;
+  isLongLived?: boolean;
   username?: string;
 }): Promise<IInstagramInstance> {
   const webhookUrl = `${SERVER_CONFIG.API_URL}/api/instagram/webhook`;
@@ -180,6 +242,8 @@ export async function createInstance(data: {
     instagramAccountId: data.instagramAccountId,
     accessToken: data.accessToken,
     tokenType: data.tokenType || 'bearer',
+    tokenExpiresAt: data.tokenExpiresAt,
+    isLongLived: data.isLongLived || false,
     username: data.username,
     status: 'connected',
     webhookUrl,
